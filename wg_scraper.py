@@ -6,9 +6,11 @@ from secrets import key, sandbox, recipient
 from jinja2 import Environment, FileSystemLoader
 import os.path
 import numpy as np
+from apscheduler.schedulers.background import BackgroundScheduler
+import time
 
 
-## so links display in tables
+## so links display in HTML tables
 pd.options.display.max_colwidth = 150
 
 
@@ -143,7 +145,7 @@ def get_listings_from_url(url_, data_file):
 
 
 ######################################################
-#####         functions to scrape urls          ######
+#####      functions for emailing results       ######
 ######################################################
 
 
@@ -191,11 +193,13 @@ def run_scraper():
 
 
 if __name__ == '__main__':
-    ### would like to be able to specify some amount of time to run this
-    ## frequency etc
-    from apscheduler.schedulers.background import BackgroundScheduler
-    import time
+    ### 
+    ## can specify to run every x minutes here
+    ## would like to specify start and stop time 
+    ## periods so it doesn't run all the time
 
+
+    ## from apscheduler docs
     scheduler = BackgroundScheduler()
     scheduler.add_job(run_scraper, 'interval', minutes=5)
     scheduler.start()
