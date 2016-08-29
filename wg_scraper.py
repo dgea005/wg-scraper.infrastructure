@@ -142,9 +142,9 @@ def get_listings_from_url(url_, data_file):
     return filter_requirements(current_listings)
 
 
-####################################################################################
-########### emailer                                                 ################
-####################################################################################
+######################################################
+#####         functions to scrape urls          ######
+######################################################
 
 
 def create_html_doc(search_table):
@@ -180,8 +180,10 @@ def run_scraper():
             'http://www.wg-gesucht.de/en/wohnungen-in-Berlin.8.2.0.0.html']
     data_file = 'storage.csv'
     new_listings = pd.concat(get_listings_from_url(url, data_file) for url in urls)
-    if new_listings.shape[0] > 0: ## if there are new listings send them
-        print('send listings')
+    n_new_listings = new_listings.shape[0]
+    print(n_new_listings)
+    if  n_new_listings >= 1: ## if there are new listings send them
+        print('send {} listings'.format(n_new_listings))
         html_doc = create_html_doc(new_listings.to_html(index=False))
         send_results_mail(html_doc)
     else:
@@ -189,4 +191,21 @@ def run_scraper():
 
 
 if __name__ == '__main__':
-    run_scraper()
+    ### would like to be able to specify some amount of time to run this
+    ## frequency etc
+    from apscheduler.schedulers.background import BackgroundScheduler
+    import time
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(run_scraper, 'interval', minutes=5)
+    scheduler.start()
+    print('Press Ctrl+c to exit')
+
+    try:
+        # This is here to simulate application activity (which keeps the main thread alive).
+        while True:
+            time.sleep(2)
+    except (KeyboardInterrupt, SystemExit):
+        # Not strictly necessary if daemonic mode is enabled but should be done if possible
+        scheduler.shutdown()
+
