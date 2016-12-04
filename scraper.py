@@ -19,7 +19,6 @@ class Scraper:
 
     def get_html(self):
         """make request to get html and soup"""
-        # TODO: make everything else running somehow conditional on the scraper working
         response = requests.get(self.url)
         assert response.status_code == 200, 'status code not 200'
         html_doc = response.text
@@ -37,8 +36,8 @@ class Scraper:
         else:
             flat_type = ''
 
-        reg_str = 'listenansicht0|listenansicht1'
-        listing_tags = self.soup.findAll('tr', class_=re.compile(reg_str))
+        listing_identifier_rx = 'listenansicht0|listenansicht1'
+        listing_tags = self.soup.findAll('tr', class_=re.compile(listing_identifier_rx))
         self.search_results = pd.DataFrame(self.get_listing_details(prop) for prop in listing_tags)
 
         ## search result clean up
