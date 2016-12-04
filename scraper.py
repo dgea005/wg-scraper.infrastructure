@@ -3,10 +3,17 @@ Class to scrape
 """
 
 import re
+import logging
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 
+log_formatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
+logger = logging.getLogger('scraper')
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler('database/scraper.log')
+logger.addHandler(handler)
+handler.setFormatter(log_formatter)
 
 class Scraper:
     """
@@ -20,6 +27,7 @@ class Scraper:
     def get_html(self):
         """make request to get html and soup"""
         response = requests.get(self.url)
+        logger.info('response from: {url} is {code}'.format(url=self.url, code=response.status_code))
         assert response.status_code == 200, 'status code not 200'
         html_doc = response.text
         self.soup = BeautifulSoup(html_doc, 'html.parser')
