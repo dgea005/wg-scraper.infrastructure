@@ -18,6 +18,28 @@ def run_scraper():
         listings.to_sql('listings_stg', disk_engine, if_exists='append', index=False)
         logging.info('{} records written to listings_stg in listings.db'.format(n_records))
 
+def write_clean_listings():
+    """deuplicate data in listings_stg and write to clean version"""
+    # get the raw data
+    disk_engine = create_engine('sqlite:///database/listings.db')
+    raw_listings = pd.read_sql('select * from listings_stg', disk_engine)
+    logging.info('{} unique listing_ids in listings_stg'.format(raw_listings.listing_id.nunique()))
+
+    # some information for dealing with changes of listing details
+    first_scraped_time = raw_listings.groupby('listing_id', as_index=False).agg({'scrape_time': min})
+    last_scraped_time = raw_listings.groupby('listing_id', as_index=False).agg({'scrape_time': max})
+    clean_listings = raw_listings.drop('scrape_time', axis=1).drop_duplicates()
+    clean_listings = clean_listings.merge(first_scraped_time, on='listing_id')
+    clean_listings = clean_listings.merge(last_scraped_time, on='listing_id')
+    number_of_changes = clean_listings.groupby('listing_id', as_index=False).size()
+    number_of_changes = pd.DataFrame(number_of_changes).rename(columns={0:'n_versions'}).reset_index()
+    clean_listings = clean_listings.merge(number_of_changes, on='listing_id')
+
+    # write processed file
+    logging.info('{} listings to write to listings_clean'.format(clean_listings.shape[0]))
+    clean_listings.to_sql('listings_clean', disk_engine, if_exists='replace', index=False)
+    logging.info('clean listings written')
+
 
 def run_scheduler():
     """
@@ -38,6 +60,7 @@ def run_scheduler():
     logging.getLogger('').addHandler(console)
     scheduler = BlockingScheduler()
     scheduler.add_job(run_scraper, 'interval', minutes=1)
+    scheduler.add_job(write_clean_listings, 'interval', minutes=2)
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
     try:

@@ -65,6 +65,7 @@ class Scraper:
         href = list(set(filter(None.__ne__, [tag.get('href') for tag in listing.findAll('a')])))
         listing_details = dict()
         listing_details['link'] = 'http://www.wg-gesucht.de/en/' + href[0]
+        listing_details['listing_id'] = listing_details['link'].split('.')[-2]
         listing_details['cost'] = (listing.find('td', class_='ang_spalte_miete').
                                    find('span').contents[1].contents[0].
                                    replace(' ', '').replace('\n', '').replace('€', ''))
