@@ -8,12 +8,8 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 
-log_formatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
-logger = logging.getLogger('scraper')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler('database/scraper.log')
-logger.addHandler(handler)
-handler.setFormatter(log_formatter)
 
 class Scraper:
     """
