@@ -3,7 +3,7 @@ import os
 from sqlalchemy import create_engine
 from apscheduler.schedulers.blocking import BlockingScheduler
 import pandas as pd
-from scraper import Scraper
+from scraper import indexScraper, listingScraper
 
 
 def run_scraper():
@@ -12,7 +12,7 @@ def run_scraper():
     urls = ['http://www.wg-gesucht.de/en/wohnungen-in-Berlin.8.1.0.0.html',
             'http://www.wg-gesucht.de/en/wohnungen-in-Berlin.8.2.0.0.html']
     for url in urls:
-        listing_html = Scraper(url).get_html()
+        listing_html = indexScraper(url).get_html()
         listings = listing_html.get_listings_from_page()
         n_records = listings.shape[0]
         listings.to_sql('listings_stg', disk_engine, if_exists='append', index=False)
@@ -20,7 +20,7 @@ def run_scraper():
 
 def write_clean_listings():
     """deuplicate data in listings_stg and write to clean version"""
-    # get the raw data
+    # get the raw data -- all data scraped to date
     disk_engine = create_engine('sqlite:///database/listings.db')
     raw_listings = pd.read_sql('select * from listings_stg', disk_engine)
     logging.info('{} unique listing_ids in listings_stg'.format(raw_listings.listing_id.nunique()))
@@ -35,7 +35,7 @@ def write_clean_listings():
     number_of_changes = pd.DataFrame(number_of_changes).rename(columns={0:'n_versions'}).reset_index()
     clean_listings = clean_listings.merge(number_of_changes, on='listing_id')
 
-    # write processed file
+    # write processed dataframe
     logging.info('{} listings to write to listings_clean'.format(clean_listings.shape[0]))
     clean_listings.to_sql('listings_clean', disk_engine, if_exists='replace', index=False)
     logging.info('clean listings written')

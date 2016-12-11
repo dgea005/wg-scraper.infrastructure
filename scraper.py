@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-class Scraper:
+class indexScraper:
     """
     Scrape results from wg-gesucht for one search link
     """
@@ -85,3 +85,24 @@ class Scraper:
             listing_details['free_to'] = None
 
         return listing_details
+
+
+class listingScraper:
+    """follow the links retrieved by indexScraper to get """
+
+    def __init__(self, listing_url):
+        self.listing_url = listing_url
+        self.soup = None
+        self.listing_details = None
+
+    def get_listing_html(self):
+        """request specified link and return html/soup"""
+        response = requests.get(self.listing_url)
+        logger.info('response from: {url} is {code}'.format(url=self.listing_url, code=response.status_code))
+        assert response.status_code == 200, 'status code not 200'
+        html_doc = response.text
+        self.soup = BeautifulSoup(html_doc, 'html.parser')
+        return self
+
+    
+
