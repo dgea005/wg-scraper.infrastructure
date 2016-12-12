@@ -23,11 +23,14 @@ def write_clean_listings():
     # get the raw data -- all data scraped to date
     disk_engine = create_engine('sqlite:///database/listings.db')
     raw_listings = pd.read_sql('select * from listings_stg', disk_engine)
-    logging.info('{} unique listing_ids in listings_stg'.format(raw_listings.listing_id.nunique()))
+    n_listings = raw_listings.listing_id.nunique()
+    logging.info('{} unique listing_ids in listings_stg'.format(n_listings))
 
     # some information for dealing with changes of listing details
     first_scraped_time = raw_listings.groupby('listing_id', as_index=False).agg({'scrape_time': min})
+    first_scraped_time = first_scraped_time.rename(columns={'scrape_time': 'first_scrape_time'})
     last_scraped_time = raw_listings.groupby('listing_id', as_index=False).agg({'scrape_time': max})
+    last_scraped_time = last_scraped_time.rename(columns={'scrape_time': 'last_scrape_time'})
     clean_listings = raw_listings.drop('scrape_time', axis=1).drop_duplicates()
     clean_listings = clean_listings.merge(first_scraped_time, on='listing_id')
     clean_listings = clean_listings.merge(last_scraped_time, on='listing_id')

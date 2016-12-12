@@ -103,6 +103,3 @@ class listingScraper:
         html_doc = response.text
         self.soup = BeautifulSoup(html_doc, 'html.parser')
         return self
-
-    
-
