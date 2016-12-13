@@ -43,6 +43,18 @@ def write_clean_listings():
     clean_listings.to_sql('listings_clean', disk_engine, if_exists='replace', index=False)
     logging.info('clean listings written')
 
+def run_listing_url_scraper():
+    """go through listing individual urls to get more detail"""
+    # retrieve urls from clean table
+    disk_engine = create_engine('sqlite:///database/listings.db')
+    listing_urls = pd.read_sql('select distinct(link) from listings_clean', disk_engine)
+
+    # get the further details
+    listing_details = []
+    for url in listing_urls:
+        html = listingScraper(url).get_listing_html()
+        html.parse_details()
+
 
 def run_scheduler():
     """
@@ -62,8 +74,9 @@ def run_scheduler():
     # add the handler to the root logger
     logging.getLogger('').addHandler(console)
     scheduler = BlockingScheduler()
-    scheduler.add_job(run_scraper, 'interval', minutes=1)
-    scheduler.add_job(write_clean_listings, 'interval', minutes=2)
+    #scheduler.add_job(run_scraper, 'interval', seconds=30)
+    #scheduler.add_job(write_clean_listings, 'interval', minutes=1)
+    scheduler.add_job(run_listing_url_scraper, 'interval', seconds=10)
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
     try:

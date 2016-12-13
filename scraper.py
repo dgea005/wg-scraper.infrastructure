@@ -88,12 +88,11 @@ class indexScraper:
 
 
 class listingScraper:
-    """follow the links retrieved by indexScraper to get """
+    """follow the links retrieved by indexScraper to get lister, address details"""
 
     def __init__(self, listing_url):
         self.listing_url = listing_url
         self.soup = None
-        self.listing_details = None
 
     def get_listing_html(self):
         """request specified link and return html/soup"""
@@ -105,7 +104,7 @@ class listingScraper:
         return self
 
     @staticmethod
-    def get_listing_details_from_url(listing_url):
+    def parse_details(listing_url):
         """follow listing url and get more details"""
         listing = listingScraper(listing_url).get_listing_html()
         # --- address --- #
@@ -121,7 +120,8 @@ class listingScraper:
         member_name = (lister_details[3].find('div', class_='col-xs-12').
                        contents[1].replace('\n', '').
                        replace('  ', ''))
-        return {'address_1': address_pt1, 
-                'address_2': address_pt2, 
+        return {'address_1': address_pt1,
+                'address_2': address_pt2,
                 'member_since': member_since,
-                'member_name': member_name}
+                'member_name': member_name,
+                'link': listing_url}
