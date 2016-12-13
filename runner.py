@@ -48,13 +48,14 @@ def run_listing_url_scraper():
     # retrieve urls from clean table
     disk_engine = create_engine('sqlite:///database/listings.db')
     listing_urls = pd.read_sql('select distinct(link) from listings_clean', disk_engine)
-
+    listing_urls = listing_urls.link.tolist()
+    logging.info('pulled {} distinct urls from local db'.format(len(listing_urls)))
     # get the further details
-    listing_details = []
-    for url in listing_urls:
-        html = listingScraper(url).get_listing_html()
-        html.parse_details()
-
+    listing_details = [listingScraper(url).get_listing_html().parse_details() for url in listing_urls]
+    listing_details = pd.concat(listing_details)
+    logging.info('retrieved {} link details'.format(listing_details.shape[0]))
+    listing_details.to_sql('listing_dim', disk_engine, if_exists='replace', index=False)
+    logging.info('{} data written to listings_dim'.format(listing_details.shape))
 
 def run_scheduler():
     """

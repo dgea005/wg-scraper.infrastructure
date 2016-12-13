@@ -96,24 +96,23 @@ class listingScraper:
 
     def get_listing_html(self):
         """request specified link and return html/soup"""
+        logger.info('scraping for url: {}'.format(self.listing_url))
         response = requests.get(self.listing_url)
-        logger.info('response from: {url} is {code}'.format(url=self.listing_url, code=response.status_code))
+        logger.info('response is {code}'.format(code=response.status_code))
         assert response.status_code == 200, 'status code not 200'
         html_doc = response.text
         self.soup = BeautifulSoup(html_doc, 'html.parser')
         return self
 
-    @staticmethod
-    def parse_details(listing_url):
+    def parse_details(self):
         """follow listing url and get more details"""
-        listing = listingScraper(listing_url).get_listing_html()
         # --- address --- #
-        address_div = listing.soup.find('div', class_='col-xs-12 col-sm-4')
+        address_div = self.soup.find('div', class_='col-xs-12 col-sm-4')
         address_contents = address_div.find('a').contents
         address_pt1 = address_contents[0].replace('\r', '').replace('\n', '').replace('  ', '')
         address_pt2 = address_contents[2].replace('\r', '').replace('\n', '').replace('  ', '')
         # --- contact information --- #
-        lister_details = listing.soup.findAll('div', class_='col-sm-12')
+        lister_details = self.soup.findAll('div', class_='col-sm-12')
         member_since = (lister_details[3].find('div', class_='row col-sm-12').
                         contents[2].replace('\n', '').
                         replace('   ', '').replace('  ', ' '))
@@ -124,4 +123,4 @@ class listingScraper:
                 'address_2': address_pt2,
                 'member_since': member_since,
                 'member_name': member_name,
-                'link': listing_url}
+                'link': self.listing_url}
