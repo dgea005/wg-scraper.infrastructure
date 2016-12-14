@@ -9,7 +9,6 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 class indexScraper:
     """
@@ -103,24 +102,47 @@ class listingScraper:
         html_doc = response.text
         self.soup = BeautifulSoup(html_doc, 'html.parser')
         return self
-
+    
     def parse_details(self):
         """follow listing url and get more details"""
+
         # --- address --- #
         address_div = self.soup.find('div', class_='col-xs-12 col-sm-4')
-        address_contents = address_div.find('a').contents
-        address_pt1 = address_contents[0].replace('\r', '').replace('\n', '').replace('  ', '')
-        address_pt2 = address_contents[2].replace('\r', '').replace('\n', '').replace('  ', '')
+        try:
+            address_contents = address_div.find('a').contents
+            address_pt1 = address_contents[0].replace('\r', '').replace('\n', '').replace('  ', '')
+            address_pt2 = address_contents[2].replace('\r', '').replace('\n', '').replace('  ', '')
+        except AttributeError:
+            logger.debug(address_div)
+            logger.info('no address info found')
+            address_pt1 = None
+            address_pt2 = None
         # --- contact information --- #
         lister_details = self.soup.findAll('div', class_='col-sm-12')
-        member_since = (lister_details[3].find('div', class_='row col-sm-12').
-                        contents[2].replace('\n', '').
-                        replace('   ', '').replace('  ', ' '))
-        member_name = (lister_details[3].find('div', class_='col-xs-12').
-                       contents[1].replace('\n', '').
-                       replace('  ', ''))
+        #logger.debug(lister_details)
+        try:
+            member_since = (lister_details[3].find('div', class_='row col-sm-12').
+                            contents[2].replace('\n', '').
+                            replace('   ', '').replace('  ', ' '))
+        except AttributeError:
+            member_since = None
+        try:
+            member_name = (lister_details[3].find('div', class_='col-xs-12').
+                           contents[1].replace('\n', '').
+                           replace('  ', ''))
+        except AttributeError:
+            member_name = None
+        # --- check if the listing is still active --- #
+        try:
+            warning_div = self.soup.find('div', class_='alert alert-warning')
+            logger.debug(warning_div.contents)
+            advert_warning = 'disabled'
+        except AttributeError:
+            advert_warning = None
+
         return {'address_1': address_pt1,
                 'address_2': address_pt2,
                 'member_since': member_since,
                 'member_name': member_name,
+                'warning':advert_warning,
                 'link': self.listing_url}
