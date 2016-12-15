@@ -105,7 +105,24 @@ class listingScraper:
     
     def parse_details(self):
         """follow listing url and get more details"""
+        # --- logic to follow (until other options are discovered) --- #
+        # 1 check if the ad has been deleted
+        # 2 check if the ad has been deactivated
+        # 3 start scraping
 
+        # --- first check - has been deleted? --- #
+        # title contains deleted
+        title = self.soup.find('title')
+        title_contents = title.contents
+        if 'deactivate' in title_contents:
+            logger.debug(title_contents)
+            return {'status': 'deleted',
+                    'link': self.listing_url}
+
+        # --- second check - has been deactivated --- #
+
+        # --- scrape logic --- #
+        # TODO: separate out into another function
         # --- address --- #
         address_div = self.soup.find('div', class_='col-xs-12 col-sm-4')
         try:
@@ -136,13 +153,13 @@ class listingScraper:
         try:
             warning_div = self.soup.find('div', class_='alert alert-warning')
             logger.debug(warning_div.contents)
-            advert_warning = 'disabled'
+            status = 'disabled'
         except AttributeError:
-            advert_warning = None
+            status = None
 
         return {'address_1': address_pt1,
                 'address_2': address_pt2,
                 'member_since': member_since,
                 'member_name': member_name,
-                'warning':advert_warning,
+                'status':status,
                 'link': self.listing_url}
