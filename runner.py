@@ -59,7 +59,7 @@ def run_listing_url_scraper():
         logging.info('url: {} scraped; sleeping 10 seconds'.format(url))
     listing_details = pd.concat(listing_details)
     logging.info('retrieved {} link details'.format(listing_details.shape[0]))
-    listing_details.to_sql('listing_dim', disk_engine, if_exists='replace', index=False)
+    listing_details.to_sql('listing_dim', disk_engine, if_exists='append', index=False)
     logging.info('{} data written to listings_dim'.format(listing_details.shape))
 
 def run_scheduler():
@@ -80,9 +80,11 @@ def run_scheduler():
     # add the handler to the root logger
     logging.getLogger('').addHandler(console)
     scheduler = BlockingScheduler()
-    #scheduler.add_job(run_scraper, 'interval', seconds=30)
-    #scheduler.add_job(write_clean_listings, 'interval', minutes=1)
-    scheduler.add_job(run_listing_url_scraper, 'interval', seconds=10)
+    scheduler.add_job(run_scraper, 'interval', minutes=5)
+    scheduler.add_job(write_clean_listings, 'interval', minutes=5)
+
+    # --- currently have individual url scraper disabled - there is a request limit --- #
+    #scheduler.add_job(run_listing_url_scraper, 'interval', minutes=10)
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
     try:
