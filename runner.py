@@ -9,8 +9,8 @@ from scraper import indexScraper, listingScraper
 
 
 
-def run_scraper():
-    """run full page scraper"""
+def scrape_search_index():
+    """run full page scraper on first page of search results"""
     disk_engine = create_engine('sqlite:///database/listings.db')
     urls = ['http://www.wg-gesucht.de/en/wohnungen-in-Berlin.8.1.0.0.html',
             'http://www.wg-gesucht.de/en/wohnungen-in-Berlin.8.2.0.0.html']
@@ -71,7 +71,7 @@ def run_scheduler():
     log.setup_logger('scheduler')
 
     scheduler = BlockingScheduler()
-    scheduler.add_job(run_scraper, 'interval', minutes=1)
+    scheduler.add_job(scrape_search_index, 'interval', minutes=1)
     scheduler.add_job(write_clean_listings, 'interval', minutes=2)
 
     # --- currently have individual url scraper disabled - there is a request limit --- #
