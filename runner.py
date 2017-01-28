@@ -1,10 +1,12 @@
 import logging
 import os
 import time
+import log
 from sqlalchemy import create_engine
 from apscheduler.schedulers.blocking import BlockingScheduler
 import pandas as pd
 from scraper import indexScraper, listingScraper
+
 
 
 def run_scraper():
@@ -66,22 +68,11 @@ def run_scheduler():
     """
     running scheduled scraping and other tasks
     """
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                        datefmt='%m-%d %H:%M',
-                        filename='database/scraper.log')
-    # define a Handler which writes INFO messages or higher to the sys.stderr
-    console = logging.StreamHandler()
-    console.setLevel(logging.DEBUG)
-    # set a format which is simpler for console use
-    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-    # tell the handler to use this format
-    console.setFormatter(formatter)
-    # add the handler to the root logger
-    logging.getLogger('').addHandler(console)
+    log.setup_logger('scheduler')
+
     scheduler = BlockingScheduler()
-    scheduler.add_job(run_scraper, 'interval', minutes=5)
-    scheduler.add_job(write_clean_listings, 'interval', minutes=5)
+    scheduler.add_job(run_scraper, 'interval', minutes=1)
+    scheduler.add_job(write_clean_listings, 'interval', minutes=2)
 
     # --- currently have individual url scraper disabled - there is a request limit --- #
     #scheduler.add_job(run_listing_url_scraper, 'interval', minutes=10)
