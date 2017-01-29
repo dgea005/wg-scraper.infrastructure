@@ -21,7 +21,7 @@ def scrape_search_index():
         logging.info('{} records written to listings_stg in listings.db'.format(n_records))
 
 def write_clean_listings():
-    """deuplicate data in listings_stg and write to clean version"""
+    """deduplicate data in listings_stg and write to clean version"""
     # get the raw data -- all data scraped to date
     db_connection = sqlalchemy.create_engine('sqlite:///database/listings.db')
     raw_listings = pd.read_sql('select * from listings_stg', db_connection)
@@ -95,7 +95,7 @@ def follow_listing_urls():
     logging.info('retrieved {} link details'.format(listing_details.shape[0]))
     listing_details.to_sql('listing_dim', db_connection, if_exists='append', index=False)
     logging.info('{} data written to listing_dim'.format(listing_details.shape))
-scrape_search_index
+
 
 def run_tasks():
     """sequential tasks to be called at same time from scheduler"""
@@ -110,10 +110,7 @@ def start_scheduler():
     """
     scheduler = BlockingScheduler()
     scheduler.add_job(run_tasks, 'interval', minutes=5)
-    #scheduler.add_job(write_clean_listings, 'interval', minutes=5)
 
-    # this is working but has missing field issues
-    #scheduler.add_job(follow_listing_urls, 'interval', minutes=10)
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
     try:
