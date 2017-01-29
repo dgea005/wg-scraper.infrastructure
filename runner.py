@@ -68,13 +68,16 @@ def follow_listing_urls():
             listing_dim = pd.read_sql('select * from listing_dim', db_connection)
             listing_dim_URLs = listing_dim.link.tolist()
             unscraped_URLs = [url for url in URLs if url not in listing_dim_URLs]
-            logging.info('{} new listings to scrape'.format(len(unscraped_URLs)))
+            logging.info('filtered to {} new listings to scrape'.format(len(unscraped_URLs)))
             return unscraped_URLs
         except sqlalchemy.exc.OperationalError:
             logging.info('listing_dim does not exist yet')
             return URLs
 
-    listing_urls = filter_previously_scraped(listing_urls)  
+    listing_urls = filter_previously_scraped(listing_urls)
+
+    if len(listing_urls) == 0:
+        return
 
     # get further details
     listing_details = []
@@ -83,7 +86,8 @@ def follow_listing_urls():
         listing_details.append(scrape_results)
         # running this for all listings quickly creates a lot of requests
         # this triggers an anti-scraper/bot response - hence the sleep
-        logging.info('url: {} scraped; sleeping 10 seconds'.format(url))
+        logging.info('url: {} scraped'.format(url))
+        logging.info('sleeping 10 seconds')
         time.sleep(10)
 
     listing_details = pd.DataFrame(listing_details)
@@ -91,17 +95,25 @@ def follow_listing_urls():
     logging.info('retrieved {} link details'.format(listing_details.shape[0]))
     listing_details.to_sql('listing_dim', db_connection, if_exists='append', index=False)
     logging.info('{} data written to listing_dim'.format(listing_details.shape))
+scrape_search_index
+
+def run_tasks():
+    """sequential tasks to be called at same time from scheduler"""
+    # call these sequentially because there is not much point running them at separate scheduled times..
+    scrape_search_index()
+    write_clean_listings()
+    follow_listing_urls()
 
 def start_scheduler():
     """
-    running scheduled scraping and other tasks
+    specify and start scheduled scraping
     """
     scheduler = BlockingScheduler()
-    scheduler.add_job(scrape_search_index, 'interval', minutes=5)
-    scheduler.add_job(write_clean_listings, 'interval', minutes=5)
-    
+    scheduler.add_job(run_tasks, 'interval', minutes=5)
+    #scheduler.add_job(write_clean_listings, 'interval', minutes=5)
+
     # this is working but has missing field issues
-    scheduler.add_job(follow_listing_urls, 'interval', minutes=10)
+    #scheduler.add_job(follow_listing_urls, 'interval', minutes=10)
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
     try:
