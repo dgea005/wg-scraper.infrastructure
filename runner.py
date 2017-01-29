@@ -62,15 +62,18 @@ def follow_listing_urls():
     logging.info('list of {} listing URLs to scrape'.format(len(listing_urls)))
 
     # should functionalise below and go through in batches
+    # and write the batches of <5 to db -- so data isn't lost if the scraper at item x
 
     # get further details
     listing_details = []
-    for url in listing_urls:
+    for url in listing_urls[0:4]:
         scrape_results = scrapers.listingScraper(url).get_listing_html().parse_details()
         listing_details.append(scrape_results)
-        time.sleep(10)
         logging.info('url: {} scraped; sleeping 10 seconds'.format(url))
-    listing_details = pd.concat(listing_details)
+        time.sleep(10)
+
+    listing_details = pd.DataFrame(listing_details)
+    print(listing_details)
     logging.info('retrieved {} link details'.format(listing_details.shape[0]))
     listing_details.to_sql('listing_dim', disk_engine, if_exists='append', index=False)
     logging.info('{} data written to listings_dim'.format(listing_details.shape))
@@ -79,13 +82,14 @@ def run_scheduler():
     """
     running scheduled scraping and other tasks
     """
-    log.setup_logger()
+    #log.setup_logger()
 
     scheduler = BlockingScheduler()
-    #scheduler.add_job(scrape_search_index, 'interval', minutes=2)
-    #scheduler.add_job(write_clean_listings, 'interval', minutes=2)
+    scheduler.add_job(scrape_search_index, 'interval', minutes=2)
+    scheduler.add_job(write_clean_listings, 'interval', minutes=2)
     # --- currently have individual url scraper disabled - there is a request limit --- #
-
+    # this is working but has issues
+    # fields are missing...
     scheduler.add_job(follow_listing_urls, 'interval', minutes=1)
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
@@ -95,4 +99,5 @@ def run_scheduler():
         pass
 
 if __name__ == '__main__':
+    log.setup_logger()
     run_scheduler()
