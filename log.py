@@ -1,6 +1,6 @@
 import logging
 
-def setup_logger(name):
+def setup_logger():
     """custom logger setup"""
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
