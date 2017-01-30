@@ -2,4 +2,6 @@ depc
 refactor
 database
 sandbox.ipynb
+database_sandbox.ipynb
 .ipynb_checkpoints
+secrets.py
