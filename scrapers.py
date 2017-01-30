@@ -102,7 +102,7 @@ class listingScraper:
         html_doc = response.text
         self.soup = BeautifulSoup(html_doc, 'html.parser')
         return self
-    
+
     def parse_details(self):
         """follow listing url and get more details"""
         # --- logic to follow (until other options are discovered) --- #

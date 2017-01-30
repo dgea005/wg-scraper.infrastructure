@@ -6,6 +6,11 @@ import sqlalchemy
 from apscheduler.schedulers.blocking import BlockingScheduler
 import pandas as pd
 import scrapers
+import emailer
+
+## email component
+from secrets import key, sandbox, recipient
+from jinja2 import Environment, FileSystemLoader
 
 
 def scrape_search_index():
@@ -99,10 +104,13 @@ def follow_listing_urls():
 
 def run_tasks():
     """sequential tasks to be called at same time from scheduler"""
-    # call these sequentially because there is not much point running them at separate scheduled times..
+    # call these sequentially because there is not much point 
+    # running them at separate scheduled times..
     scrape_search_index()
     write_clean_listings()
     follow_listing_urls()
+    emailer.send_email()
+
 
 def start_scheduler():
     """
