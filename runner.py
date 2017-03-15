@@ -21,6 +21,7 @@ def scrape_search_index():
     for url in urls:
         listing_html = scrapers.indexScraper(url).get_html()
         listings = listing_html.get_listings_from_page()
+
         n_records = listings.shape[0]
         listings.to_sql('listings_stg', db_connection, if_exists='append', index=False)
         logging.info('{} records written to listings_stg in listings.db'.format(n_records))
@@ -108,7 +109,7 @@ def run_tasks():
     # running them at separate scheduled times..
     scrape_search_index()
     write_clean_listings()
-    follow_listing_urls()
+    #follow_listing_urls()
     emailer.send_email()
 
 
