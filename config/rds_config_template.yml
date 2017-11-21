@@ -3,3 +3,4 @@ ScraperDatabase:
   master_user_name: x
   master_user_password: x
   db_name: x
+  vpc_id: x

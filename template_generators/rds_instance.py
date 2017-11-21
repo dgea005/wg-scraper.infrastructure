@@ -1,8 +1,9 @@
-from troposphere import GetAtt, Join, Output
-from troposphere import Template
-from troposphere.rds import DBInstance
+from troposphere import GetAtt, Join, Output, Ref
+from troposphere import Template, ec2, Parameter
+from troposphere.rds import DBInstance, DBSecurityGroup
 import ruamel_yaml as yaml
 import boto3
+import requests
 from utils import create_or_update_stack
 
 with open('../config/rds_config.yml') as f:
@@ -13,11 +14,32 @@ INSTANCE_CLASS = cfg['ScraperDatabase']['instance_class']
 MASTER_USER_NAME = cfg['ScraperDatabase']['master_user_name']
 MASTER_USER_PASSWORD = cfg['ScraperDatabase']['master_user_password']
 DB_NAME = cfg['ScraperDatabase']['db_name']
+VPC_ID = cfg['ScraperDatabase']['vpc_id']
 
 
 t = Template()
 t.add_version("2010-09-09")
 t.add_description("CFN template for scraper db")
+
+r = requests.get('http://checkip.amazonaws.com/')
+result = [x for x in r.text if x is not '\n']
+my_ip = ''.join(result)
+
+db_security_group = t.add_resource(ec2.SecurityGroup(
+    'DatabaseSecurityGroup',
+    GroupDescription="Database security group.",
+    VpcId=VPC_ID,
+    SecurityGroupIngress=[
+        ec2.SecurityGroupRule(
+            IpProtocol="tcp",
+            FromPort="5432",
+            ToPort="5432",
+            CidrIp=f"{my_ip}/32"
+        ),
+    ],
+))
+
+
 MyDB = t.add_resource(DBInstance(
     "MyDB",
     Engine="postgres",
@@ -27,6 +49,7 @@ MyDB = t.add_resource(DBInstance(
     AllocatedStorage="5",
     DBInstanceClass=INSTANCE_CLASS,
     DBName=DB_NAME,
+    VPCSecurityGroups=[Ref(db_security_group)]
 ))
 
 t_json = t.to_json(indent=4)
