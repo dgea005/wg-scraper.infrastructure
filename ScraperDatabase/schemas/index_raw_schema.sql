@@ -1,0 +1,15 @@
+DROP TABLE IF EXISTS index_raw;
+CREATE TABLE index_raw 
+(
+    id SERIAL PRIMARY KEY,
+    listing_id INTEGER DEFAULT NULL,
+    link TEXT DEFAULT NULL,
+    cost SMALLINT DEFAULT NULL,
+    size SMALLINT DEFAULT NULL,
+    stadt TEXT DEFAULT NULL,
+    free_from DATE DEFAULT NULL,
+    free_to DATE DEFAULT NULL,
+    stay_length SMALLINT DEFAULT NULL,
+    scrape_time TIMESTAMP DEFAULT NULL,
+    flat_type VARCHAR(50) DEFAULT '---'
+);
