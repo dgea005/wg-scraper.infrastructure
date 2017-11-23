@@ -2,13 +2,15 @@
 useful http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-events-rule.html
 """
 
+#TODO: clean up imports
 import boto3
 from troposphere import Template, Ref, Parameter, Tags, Output, GetAtt
-from awacs.aws import Allow, Statement, Policy, Action, AWSPrincipal, Role
-from cfn_flip import to_yaml
+
+from awacs.aws import Allow, Statement, Policy, Action, AWSPrincipal
 from troposphere import Template, Parameter, iam
+from troposphere.iam import Role
 from awacs.s3 import ARN as S3_ARN
-from troposphere.awslambda import Function, Code
+from troposphere.awslambda import Function, Code, VPCConfig
 import ruamel_yaml as yaml
 from utils import create_or_update_stack
 
@@ -19,6 +21,9 @@ with open('../config/lambda_writer_config.yml') as f:
 STACK_NAME = cfg['LambdaWriter']['stack_name']
 S3_BUCKET = cfg['LambdaWriter']['s3_bucket']
 S3_REGION = cfg['LambdaWriter']['s3_region']
+SECURITY_GROUP_ID = cfg['LambdaWriter']['security_group']
+S3_KEY = cfg['LambdaWriter']['s3_key']
+SUBNET_ID = cfg['LambdaWriter']['subnet_id']
 
 t = Template()
 description = 'Stack for writing from lambda to rds'
@@ -26,29 +31,86 @@ t.add_description(description)
 
 t.add_version('2010-09-09')
 
-LambdaExecutionRole = t.add_resource(Role(
-    "LambdaExecutionRole",
-    Path="/",
-    Policies=[Policy(
-        PolicyName="root",
-        PolicyDocument={
-            "Version": "2012-10-17",
+
+ExistingSecurityGroups = t.add_parameter(Parameter(
+    "ExistingSecurityGroups",
+    Type="List<AWS::EC2::SecurityGroup::Id>"
+))
+
+ExistingSubnets = t.add_parameter(Parameter(
+    "ExistingSubnets",
+    Type="List<AWS::EC2::Subnet::Id>",
+    Description='My VPC subnets'
+))
+
+lambda_policy_doc = Policy(
+    Statement=[
+        Statement(
+            Sid='Logs',
+            Effect=Allow,
+            Action=[Action('logs', 'CreateLogGroup'),
+                    Action('logs', 'CreateLogStream'),
+                    Action('logs', 'PutLogEvents')],
+            Resource=["arn:aws:logs:*:*:*"]
+        ),
+        # inside vpc there is ENI stuff need to be able to do this
+        Statement(
+            Sid='ENIs',
+            Effect=Allow,
+            Action=[
+                Action('ec2', 'DescribeNetworkInterfaces'),
+                Action('ec2', 'CreateNetworkInterface'),
+                Action('ec2', 'DeleteNetworkInterface')
+            ],
+            Resource=["*"]
+        )
+    ],
+)
+
+LambdaExecutionRole = t.add_resource(
+    iam.Role(
+        "LambdaExecutionRole",
+        Path="/",
+        AssumeRolePolicyDocument={
             "Statement": [{
-                "Action": ["logs:*"],
-                "Resource": "arn:aws:logs:*:*:*",
-                "Effect": "Allow"
+                "Effect": "Allow",
+                "Principal": {"Service": ["lambda.amazonaws.com"]},
+                "Action": ["sts:AssumeRole"]
             }]
-        })],
-    AssumeRolePolicyDocument={
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Action": ["sts:AssumeRole"],
-            "Effect": "Allow",
-            "Principal": {
-                "Service": ["lambda.amazonaws.com"]
-            }
-        }]
-    },
+        },
+
+        Policies=[
+            iam.Policy(
+                PolicyName='lambdaPolicy',
+                PolicyDocument=lambda_policy_doc,
+            ),
+        ]
+))
+
+
+vpc_config = VPCConfig(
+    "LambdaVPCConfig",
+    SecurityGroupIds=Ref(ExistingSecurityGroups),
+    SubnetIds=Ref(ExistingSubnets)
+)
+
+LambdaCode = Code(
+    "LambdaWriterCode",
+    S3Bucket=S3_BUCKET,
+    S3Key=S3_KEY
+)
+
+# Function
+WriteToRDSFunction = t.add_resource(Function(
+    "WriteToRDSFunction",
+    Code=LambdaCode,
+    DependsOn="LambdaExecutionRole",
+    Handler="lambda_function.lambda_handler",
+    Role=GetAtt("LambdaExecutionRole", "Arn"),
+    Runtime="python3.6",
+    MemorySize=512,
+    Timeout=30,
+    VpcConfig=vpc_config
 ))
 
 t_json = t.to_json(indent=4)
@@ -57,6 +119,16 @@ print(t_json)
 
 stack_args = {
     'StackName': STACK_NAME,
+    'Parameters': [
+        {
+            'ParameterKey': 'ExistingSecurityGroups',
+            'ParameterValue': SECURITY_GROUP_ID
+        },
+        {
+            'ParameterKey': 'ExistingSubnets',
+            'ParameterValue': SUBNET_ID
+        }
+    ],
     'TemplateBody': t_json,
     'Tags': [
         {
