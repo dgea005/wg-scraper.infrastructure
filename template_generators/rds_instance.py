@@ -53,6 +53,14 @@ MyDB = t.add_resource(DBInstance(
     VPCSecurityGroups=[Ref(db_security_group), SECURITY_GROUP]
 ))
 
+t.add_output(Output(
+    "DBEndpoint",
+    Description="Postgres database endpoint",
+    Value=Join("", [
+        GetAtt("MyDB", "Endpoint.Address"),
+    ])
+))
+
 t_json = t.to_json(indent=4)
 
 print(t_json)
