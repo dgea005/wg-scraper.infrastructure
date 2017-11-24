@@ -10,9 +10,9 @@ from awacs.aws import Allow, Statement, Policy, Action, AWSPrincipal
 from troposphere import Template, Parameter, iam
 from troposphere.iam import Role
 from awacs.s3 import ARN as S3_ARN
-from troposphere.awslambda import Function, Code, VPCConfig
+from troposphere.awslambda import Function, Code, VPCConfig, Environment
 import ruamel_yaml as yaml
-from utils import create_or_update_stack
+from utils import create_or_update_stack, stack_info
 
 with open('../config/lambda_writer_config.yml') as f:
     cfg = yaml.load(f)
@@ -24,6 +24,13 @@ S3_REGION = cfg['LambdaWriter']['s3_region']
 SECURITY_GROUP_ID = cfg['LambdaWriter']['security_group']
 S3_KEY = cfg['LambdaWriter']['s3_key']
 SUBNET_ID = cfg['LambdaWriter']['subnet_id']
+RDS_ENDPOINT = stack_info(stack_name=cfg['LambdaWriter']['rds_stack'])['DBEndpoint']
+
+with open('../config/rds_config.yml') as f:
+    cfg = yaml.load(f)
+RDS_USER_NAME = cfg['ScraperDatabase']['master_user_name']
+RDS_USER_PASSWORD = cfg['ScraperDatabase']['master_user_password']
+
 
 t = Template()
 description = 'Stack for writing from lambda to rds'
@@ -42,6 +49,8 @@ ExistingSubnets = t.add_parameter(Parameter(
     Type="List<AWS::EC2::Subnet::Id>",
     Description='My VPC subnets'
 ))
+
+
 
 lambda_policy_doc = Policy(
     Statement=[
@@ -100,11 +109,23 @@ LambdaCode = Code(
     S3Key=S3_KEY
 )
 
+# or should these be params?
+EnvironmentVars = Environment(
+    "LambdaEnvs",
+    Variables={
+        "db_user": RDS_USER_NAME,
+        "db_pass": RDS_USER_PASSWORD,
+        "db_endpoint": RDS_ENDPOINT
+    }
+
+)
+
 # Function
 WriteToRDSFunction = t.add_resource(Function(
     "WriteToRDSFunction",
     Code=LambdaCode,
     DependsOn="LambdaExecutionRole",
+    Environment=EnvironmentVars,
     Handler="lambda_function.lambda_handler",
     Role=GetAtt("LambdaExecutionRole", "Arn"),
     Runtime="python3.6",
