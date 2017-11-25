@@ -10,7 +10,7 @@ from awacs.aws import Allow, Statement, Policy, Action, AWSPrincipal
 from troposphere import Template, Parameter, iam
 from troposphere.iam import Role
 from awacs.s3 import ARN as S3_ARN
-from troposphere.awslambda import Function, Code, VPCConfig, Environment
+from troposphere.awslambda import Function, Code, VPCConfig, Environment, EventSourceMapping
 import ruamel_yaml as yaml
 from utils import create_or_update_stack, stack_info
 
@@ -69,12 +69,17 @@ lambda_policy_doc = Policy(
             Action=[
                 Action('ec2', 'DescribeNetworkInterfaces'),
                 Action('ec2', 'CreateNetworkInterface'),
-                Action('ec2', 'DeleteNetworkInterface')
+                Action('ec2', 'DeleteNetworkInterface'),
+                Action("kinesis", "DescribeStream"),
+                Action("kinesis", "GetRecords"),
+                Action("kinesis", "GetShardIterator"),
+                Action("kinesis", "ListStreams")
             ],
             Resource=["*"]
-        )
+        ),
     ],
 )
+
 
 LambdaExecutionRole = t.add_resource(
     iam.Role(
@@ -134,6 +139,21 @@ WriteToRDSFunction = t.add_resource(Function(
     MemorySize=512,
     Timeout=30,
     VpcConfig=vpc_config
+))
+
+
+# add event source mapping
+
+STREAM_ARN = stack_info(stack_name='ScraperStreamStack')['StreamARN']
+
+LambdaEventSourceMapping = t.add_resource(EventSourceMapping(
+    "LambdaEventSourceMapping",
+    BatchSize=10,
+    Enabled=True,
+    EventSourceArn=STREAM_ARN,
+    FunctionName="WriteToRDSFunction",  # same as defined in function above
+    StartingPosition="TRIM_HORIZON"
+    
 ))
 
 t_json = t.to_json(indent=4)
