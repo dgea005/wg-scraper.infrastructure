@@ -124,8 +124,10 @@ EnvironmentVars = Environment(
 WriteToRDSFunction = t.add_resource(Function(
     "WriteToRDSFunction",
     Code=LambdaCode,
+    Description="Write data to postgres RDS",
     DependsOn="LambdaExecutionRole",
     Environment=EnvironmentVars,
+    FunctionName="WriteToRDSFunction",
     Handler="lambda_function.lambda_handler",
     Role=GetAtt("LambdaExecutionRole", "Arn"),
     Runtime="python3.6",
