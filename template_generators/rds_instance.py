@@ -15,6 +15,7 @@ MASTER_USER_NAME = cfg['ScraperDatabase']['master_user_name']
 MASTER_USER_PASSWORD = cfg['ScraperDatabase']['master_user_password']
 DB_NAME = cfg['ScraperDatabase']['db_name']
 VPC_ID = cfg['ScraperDatabase']['vpc_id']
+SECURITY_GROUP = cfg['ScraperDatabase']['security_group']   
 
 
 t = Template()
@@ -49,7 +50,15 @@ MyDB = t.add_resource(DBInstance(
     AllocatedStorage="5",
     DBInstanceClass=INSTANCE_CLASS,
     DBName=DB_NAME,
-    VPCSecurityGroups=[Ref(db_security_group)]
+    VPCSecurityGroups=[Ref(db_security_group), SECURITY_GROUP]
+))
+
+t.add_output(Output(
+    "DBEndpoint",
+    Description="Postgres database endpoint",
+    Value=Join("", [
+        GetAtt("MyDB", "Endpoint.Address"),
+    ])
 ))
 
 t_json = t.to_json(indent=4)
