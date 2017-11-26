@@ -8,14 +8,16 @@ http://docs.aws.amazon.com/firehose/latest/dev/controlling-access.html#using-iam
 template to allow firehose to read from the kinesis and stream and write data to s3
 
 """
+import boto3
 from awacs.aws import Allow, Statement, Policy, Action
 from troposphere import Ref, Template, GetAtt, Output, iam
 from utils import create_or_update_stack, stack_info
 import ruamel_yaml as yaml
 from troposphere.firehose import (
+    KinesisStreamSourceConfiguration,
     DeliveryStream,
-    EncryptionConfiguration,
-    S3Configuration,
+    BufferingHints,
+    S3DestinationConfiguration
 )
 
 with open('../config/firehose_config.yml') as f:
@@ -26,12 +28,12 @@ ACCOUNT_ID = cfg['firehose']['account_id']
 BUCKET_NAME = cfg['firehose']['bucket_name']
 REGION = cfg['firehose']['region']
 STREAM_NAME = stack_info(stack_name='ScraperStreamStack')['StreamName']
+STREAM_ARN = stack_info(stack_name='ScraperStreamStack')['StreamARN']
 
 t = Template()
 description = 'Stack for kinesis firehose stream to deliver to s3 from kinesis'
 t.add_description(description)
 t.add_version('2010-09-09')
-
 
 firehose_policy_doc = Policy(
     Statement=[
@@ -88,3 +90,54 @@ FirehoseExecutionRole = t.add_resource(
             ),
         ]
 ))
+
+# need ARN of this FirehoseExecutionRole
+KinesisSource = KinesisStreamSourceConfiguration(
+    KinesisStreamARN=STREAM_ARN,
+    RoleARN=GetAtt(FirehoseExecutionRole, 'Arn')
+)
+
+FirehoseBuffer = BufferingHints(
+    IntervalInSeconds=120,
+    SizeInMBs=1
+)
+
+S3Destination = S3DestinationConfiguration(
+    BucketARN=f'arn:aws:s3:::{BUCKET_NAME}',
+    BufferingHints=FirehoseBuffer,
+    CompressionFormat='GZIP',
+    Prefix='firehose/',
+    RoleARN=GetAtt(FirehoseExecutionRole, 'Arn')
+
+)
+
+Firehose = t.add_resource(DeliveryStream(
+    'KinesisToS3Stream',
+    DeliveryStreamName='KinesisToS3Stream',
+    DeliveryStreamType='KinesisStreamAsSource',
+    KinesisStreamSourceConfiguration=KinesisSource,
+    S3DestinationConfiguration=S3Destination
+))
+
+t_json = t.to_json(indent=4)
+
+print(t_json)
+
+stack_args = {
+    'StackName': STACK_NAME,
+    'TemplateBody': t_json,
+    'Tags': [
+        {
+            'Key': 'Purpose',
+            'Value': 'ScraperFirehose'
+        }
+    ],
+    'Capabilities': [
+        'CAPABILITY_IAM',
+    ]
+}
+
+cfn = boto3.client('cloudformation')
+cfn.validate_template(TemplateBody=t_json)
+
+create_or_update_stack(**stack_args)
