@@ -7,6 +7,8 @@ from utils import create_or_update_stack
 STACK_NAME = 'ScraperStreamStack'
 
 t = Template()
+description = 'Stack for kinesis stream for scraper data'
+t.add_description(description)
 
 kinesis_stream = t.add_resource(kinesis.Stream(
     "ScraperStream",
