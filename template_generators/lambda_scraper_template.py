@@ -123,7 +123,7 @@ EnvironmentVars = Environment(
 WriteToRDSFunction = t.add_resource(Function(
     "WriteToRDSFunction",
     Code=LambdaCode,
-    Description="Write data to postgres RDS",
+    Description="Scrape data and send to kinesis",
     DependsOn="ScraperLambdaExecutionRole",
     Environment=EnvironmentVars,
     FunctionName="ScraperIndex",
