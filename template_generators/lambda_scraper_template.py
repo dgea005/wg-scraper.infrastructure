@@ -111,7 +111,7 @@ LambdaCode = Code(
     S3Bucket=S3_BUCKET,
     S3Key=S3_KEY
 )
-
+# VpcConfig=vpc_config
 
 # Function
 WriteToRDSFunction = t.add_resource(Function(
@@ -124,8 +124,7 @@ WriteToRDSFunction = t.add_resource(Function(
     Role=GetAtt("ScraperLambdaExecutionRole", "Arn"),
     Runtime="python3.6",
     MemorySize=512,
-    Timeout=30,
-    VpcConfig=vpc_config
+    Timeout=30
 ))
 
 
