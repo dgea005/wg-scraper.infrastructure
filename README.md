@@ -23,3 +23,15 @@ psql \
    --dbname=<database name> 
 
 need to add security group rules for this to work
+
+
+## testing kinesis 
+
+with example record
+
+aws kinesis put-record \
+--stream-name stream name  \
+--data '{"link": "http://last_fired","listing_id": "000000", "cost": 400, "size": 18, "stadt": "Kreuzberg", "free_from": "2017-08-29", "free_to": "2017-09-01", "stay_length": 30, "scrape_time": "2017-08-24 07:20:13", "flat_type": "studio"}' \
+--partition-key shardId-000000000000 \
+--region my region \
+--profile my profile
