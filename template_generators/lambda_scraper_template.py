@@ -24,7 +24,8 @@ S3_REGION = cfg['LambdaScraper']['s3_region']
 SECURITY_GROUP_ID = cfg['LambdaScraper']['security_group']
 S3_KEY = cfg['LambdaScraper']['s3_key']
 SUBNET_ID = cfg['LambdaScraper']['subnet_id']
-STREAM_ARN = stack_info(stack_name='ScraperStreamStack')['StreamARN']
+PARTITION_KEY = cfg['LambdaScraper']['kinesis_partition']
+STREAM_NAME = stack_info(stack_name='ScraperStreamStack')['StreamName']
 
 
 
@@ -45,8 +46,6 @@ ExistingSubnets = t.add_parameter(Parameter(
     Type="List<AWS::EC2::Subnet::Id>",
     Description='My VPC subnets'
 ))
-
-
 
 lambda_policy_doc = Policy(
     Statement=[
@@ -78,7 +77,6 @@ lambda_policy_doc = Policy(
     ],
 )
 
-
 ScraperLambdaExecutionRole = t.add_resource(
     iam.Role(
         "ScraperLambdaExecutionRole",
@@ -105,7 +103,7 @@ vpc_config = VPCConfig(
     SecurityGroupIds=Ref(ExistingSecurityGroups),
     SubnetIds=Ref(ExistingSubnets)
 )
-
+PARTITION_KEY
 LambdaCode = Code(
     "LambdaScraperCode",
     S3Bucket=S3_BUCKET,
@@ -113,12 +111,21 @@ LambdaCode = Code(
 )
 # VpcConfig=vpc_config
 
+EnvironmentVars = Environment(
+    "LambdaEnvs",
+    Variables={
+        "stream_name": STREAM_NAME,
+        "partition_key": PARTITION_KEY
+    }
+)
+
 # Function
 WriteToRDSFunction = t.add_resource(Function(
     "WriteToRDSFunction",
     Code=LambdaCode,
     Description="Write data to postgres RDS",
     DependsOn="ScraperLambdaExecutionRole",
+    Environment=EnvironmentVars,
     FunctionName="ScraperIndex",
     Handler="lambda_function.lambda_handler",
     Role=GetAtt("ScraperLambdaExecutionRole", "Arn"),
@@ -126,8 +133,6 @@ WriteToRDSFunction = t.add_resource(Function(
     MemorySize=512,
     Timeout=30
 ))
-
-
 
 t_json = t.to_json(indent=4)
 
