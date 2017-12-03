@@ -149,6 +149,7 @@ STREAM_ARN = stack_info(stack_name='ScraperStreamStack')['StreamARN']
 LambdaEventSourceMapping = t.add_resource(EventSourceMapping(
     "LambdaEventSourceMapping",
     BatchSize=10,
+    DependsOn="WriteToRDSFunction",
     Enabled=True,
     EventSourceArn=STREAM_ARN,
     FunctionName="WriteToRDSFunction",  # same as defined in function above

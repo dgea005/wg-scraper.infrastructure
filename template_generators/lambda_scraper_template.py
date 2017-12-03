@@ -69,7 +69,8 @@ lambda_policy_doc = Policy(
                 Action("kinesis", "GetRecords"),
                 Action("kinesis", "GetShardIterator"),
                 Action("kinesis", "ListStreams"),
-                Action("kinesis", "PutRecord")
+                Action("kinesis", "PutRecord"),
+                Action("kinesis", "PutRecords")
             ],
             # should specify the stream this is for to restrict more
             Resource=["*"]
