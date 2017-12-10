@@ -35,3 +35,12 @@ aws kinesis put-record \
 --partition-key shardId-000000000000 \
 --region my region \
 --profile my profile
+
+
+# order to start things
+
+1) RDS
+2) kinesis stream
+3) Event source lambda to RDS
+4) firehose
+5) input lambda

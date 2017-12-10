@@ -14,26 +14,26 @@ from troposphere.awslambda import Function, Code, VPCConfig, Environment, EventS
 import ruamel_yaml as yaml
 from utils import create_or_update_stack, stack_info
 
-with open('../config/lambda_writer_config.yml') as f:
+with open('../config/lambda_scraper_config.yml') as f:
     cfg = yaml.load(f)
 
 
-STACK_NAME = cfg['LambdaWriter']['stack_name']
-S3_BUCKET = cfg['LambdaWriter']['s3_bucket']
-S3_REGION = cfg['LambdaWriter']['s3_region']
-SECURITY_GROUP_ID = cfg['LambdaWriter']['security_group']
-S3_KEY = cfg['LambdaWriter']['s3_key']
-SUBNET_ID = cfg['LambdaWriter']['subnet_id']
-RDS_ENDPOINT = stack_info(stack_name=cfg['LambdaWriter']['rds_stack'])['DBEndpoint']
+STACK_NAME = cfg['LambdaScraper']['stack_name']
+S3_BUCKET = cfg['LambdaScraper']['s3_bucket']
+S3_REGION = cfg['LambdaScraper']['s3_region']
+SECURITY_GROUP_ID = cfg['LambdaScraper']['security_group']
+S3_KEY = cfg['LambdaScraper']['s3_key']
+SUBNET_ID = cfg['LambdaScraper']['subnet_id']
+PARTITION_KEY = cfg['LambdaScraper']['kinesis_partition']
+STREAM_NAME = stack_info(stack_name='ScraperStreamStack')['StreamName']
+SCRAPE_LINK_1 = cfg['LambdaScraper']['scrape_link_1'] 
+SCRAPE_LINK_2 = cfg['LambdaScraper']['scrape_link_2']
+BASE_LINK = cfg['LambdaScraper']['base_link']
 
-with open('../config/rds_config.yml') as f:
-    cfg = yaml.load(f)
-RDS_USER_NAME = cfg['ScraperDatabase']['master_user_name']
-RDS_USER_PASSWORD = cfg['ScraperDatabase']['master_user_password']
 
 
 t = Template()
-description = 'Stack for writing from lambda to rds'
+description = 'Stack for scraping and putting records to kinesis'
 t.add_description(description)
 
 t.add_version('2010-09-09')
@@ -49,8 +49,6 @@ ExistingSubnets = t.add_parameter(Parameter(
     Type="List<AWS::EC2::Subnet::Id>",
     Description='My VPC subnets'
 ))
-
-
 
 lambda_policy_doc = Policy(
     Statement=[
@@ -73,17 +71,19 @@ lambda_policy_doc = Policy(
                 Action("kinesis", "DescribeStream"),
                 Action("kinesis", "GetRecords"),
                 Action("kinesis", "GetShardIterator"),
-                Action("kinesis", "ListStreams")
+                Action("kinesis", "ListStreams"),
+                Action("kinesis", "PutRecord"),
+                Action("kinesis", "PutRecords")
             ],
+            # should specify the stream this is for to restrict more
             Resource=["*"]
         ),
     ],
 )
 
-
-LambdaExecutionRole = t.add_resource(
+ScraperLambdaExecutionRole = t.add_resource(
     iam.Role(
-        "LambdaExecutionRole",
+        "ScraperLambdaExecutionRole",
         Path="/",
         AssumeRolePolicyDocument={
             "Statement": [{
@@ -95,7 +95,7 @@ LambdaExecutionRole = t.add_resource(
 
         Policies=[
             iam.Policy(
-                PolicyName='lambdaPolicy',
+                PolicyName='ScraperLambdaPolicy',
                 PolicyDocument=lambda_policy_doc,
             ),
         ]
@@ -107,54 +107,38 @@ vpc_config = VPCConfig(
     SecurityGroupIds=Ref(ExistingSecurityGroups),
     SubnetIds=Ref(ExistingSubnets)
 )
-
+PARTITION_KEY
 LambdaCode = Code(
-    "LambdaWriterCode",
+    "LambdaScraperCode",
     S3Bucket=S3_BUCKET,
     S3Key=S3_KEY
 )
+# VpcConfig=vpc_config
 
-# or should these be params?
 EnvironmentVars = Environment(
     "LambdaEnvs",
     Variables={
-        "db_user": RDS_USER_NAME,
-        "db_pass": RDS_USER_PASSWORD,
-        "db_endpoint": RDS_ENDPOINT
+        "stream_name": STREAM_NAME,
+        "partition_key": PARTITION_KEY,
+        "scrape_link_1": SCRAPE_LINK_1,
+        "scrape_link_2": SCRAPE_LINK_2,
+        "base_link": BASE_LINK
     }
-
 )
 
 # Function
 WriteToRDSFunction = t.add_resource(Function(
     "WriteToRDSFunction",
     Code=LambdaCode,
-    Description="Write data to postgres RDS",
-    DependsOn="LambdaExecutionRole",
+    Description="Scrape data and send to kinesis",
+    DependsOn="ScraperLambdaExecutionRole",
     Environment=EnvironmentVars,
-    FunctionName="WriteToRDSFunction",
+    FunctionName="ScraperIndex",
     Handler="lambda_function.lambda_handler",
-    Role=GetAtt("LambdaExecutionRole", "Arn"),
+    Role=GetAtt("ScraperLambdaExecutionRole", "Arn"),
     Runtime="python3.6",
     MemorySize=512,
-    Timeout=30,
-    VpcConfig=vpc_config
-))
-
-
-# add event source mapping
-
-STREAM_ARN = stack_info(stack_name='ScraperStreamStack')['StreamARN']
-
-LambdaEventSourceMapping = t.add_resource(EventSourceMapping(
-    "LambdaEventSourceMapping",
-    BatchSize=10,
-    DependsOn="WriteToRDSFunction",
-    Enabled=True,
-    EventSourceArn=STREAM_ARN,
-    FunctionName="WriteToRDSFunction",  # same as defined in function above
-    StartingPosition="TRIM_HORIZON"
-    
+    Timeout=30
 ))
 
 t_json = t.to_json(indent=4)
@@ -177,7 +161,7 @@ stack_args = {
     'Tags': [
         {
             'Key': 'Purpose',
-            'Value': 'Scraper RDS'
+            'Value': 'Scraping'
         }
     ],
     'Capabilities': [
