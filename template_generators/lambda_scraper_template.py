@@ -26,6 +26,9 @@ S3_KEY = cfg['LambdaScraper']['s3_key']
 SUBNET_ID = cfg['LambdaScraper']['subnet_id']
 PARTITION_KEY = cfg['LambdaScraper']['kinesis_partition']
 STREAM_NAME = stack_info(stack_name='ScraperStreamStack')['StreamName']
+SCRAPE_LINK_1 = cfg['LambdaScraper']['scrape_link_1'] 
+SCRAPE_LINK_2 = cfg['LambdaScraper']['scrape_link_2']
+BASE_LINK = cfg['LambdaScraper']['base_link']
 
 
 
@@ -116,7 +119,10 @@ EnvironmentVars = Environment(
     "LambdaEnvs",
     Variables={
         "stream_name": STREAM_NAME,
-        "partition_key": PARTITION_KEY
+        "partition_key": PARTITION_KEY,
+        "scrape_link_1": SCRAPE_LINK_1,
+        "scrape_link_2": SCRAPE_LINK_2,
+        "base_link": BASE_LINK
     }
 )
 
